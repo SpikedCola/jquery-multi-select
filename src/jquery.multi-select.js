@@ -8,6 +8,7 @@
 
   var pluginName = "multiSelect",
     defaults = {
+      'onChangeCallback': undefined, // J added
       'containerHTML': '<div class="multi-select-container">',
       'menuHTML': '<div class="multi-select-menu">',
       'buttonHTML': '<span class="multi-select-button">',
@@ -137,15 +138,20 @@
           selected.push( $.trim(text) );
         }
       });
-
+      var text;
       this.$button.empty();
-
       if (selected.length == 0) {
-        this.$button.text( this.settings['noneText'] );
+        text = this.settings['noneText'];
       } else if ( (selected.length === options.length) && this.settings['allText']) {
-        this.$button.text( this.settings['allText'] );
+        text = this.settings['allText'];
       } else {
-        this.$button.text( selected.join(', ') );
+	/* modified to add noneText ahead of list of values */
+	text = this.settings['noneText']+': '+selected.join(', ');
+      }
+      this.$button.text(text);
+      // J: modified to add this callback
+      if (this.settings['onChangeCallback']) {
+	      this.settings['onChangeCallback'](this.$button, text);
       }
     },
 
@@ -358,6 +364,24 @@
 
     setUpBodyClickListener: function() {
       var _this = this;
+	/* J: add event called 'ms.reset' that will reset button text back to noneText. form reset clears checkboxes but not this text */
+	this.$element.on('ms.reset', function () {
+		var text = _this.settings['noneText'];
+		_this.$button.text(text);
+		// clear checkboxes
+		_this.$menu.find(':checkbox').prop('checked', false);
+		// clear underlying multiselect
+		_this.$element.prop('selectedIndex', -1);
+		// maybe call onchange callback	
+		if (_this.settings['onChangeCallback']) {
+			_this.settings['onChangeCallback'](_this.$button, text);
+		}
+	});
+
+	/* J: add event called 'ms.updateButtonContents' our change handler gets called after button text, quick way to rebuild it */
+	this.$element.on('ms.updateButtonContents', function () {
+		_this.updateButtonContents();
+	});
 
       // Hide the $menu when you click outside of it.
       $('html').on('click.multiselect', function(){
